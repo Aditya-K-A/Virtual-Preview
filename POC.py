@@ -505,7 +505,7 @@ def decode_base64_to_image(base64_data):
 # Function to call the Text-to-Image API
 def generate_outfits(prompt, api_key):
     url = "https://api.segmind.com/v1/stable-diffusion-3.5-large-txt2img"
-    headers = {'x-api-key': "SG_b10384629aa194e1"}
+    headers = {"x-api-key": st.secrets["API"]["api_key"]}
     data = {
         "prompt": prompt,
         # "negative_prompt": "low quality, blurry, cropped head, disfigured face, animated",
@@ -550,7 +550,7 @@ def apply_faceswap(source_img_base64, target_img_base64, api_key):
         "image_quality": 95,
         "base64": True
     }
-    headers = {"x-api-key": "SG_b10384629aa194e1"}
+    headers = {"x-api-key": st.secrets["API"]["api_key"]}
     response = requests.post(url, json=data, headers=headers)
     
     if response.status_code == 200 and "image" in response.json():
@@ -587,7 +587,6 @@ if st.button("Generate Outfit Suggestions"):
         
         # Generate outfit images using Text-to-Image API
         st.info("Generating outfit suggestions...")
-        text_to_image_api_key = "SG_b10384629aa194e1"
         prompt = (
             # f"A full-body image of an Indian {age.lower()} some {gender.lower()} with a {body_shape.lower()} {body_type.lower()} body and {color_complexion.lower()} complexion, for an occasion like {occasion.lower()} "
             f'''A full-body image of an Indian {gender.lower()} in his/her {age.lower()}, dressed for a {occasion.lower()} and in a {style.lower()} style for a {season.lower()} season , 
@@ -597,15 +596,15 @@ if st.button("Generate Outfit Suggestions"):
             for a polished look. Lighting is natural and soft, enhancing the colors and textures of the clothing and accessories.'''
             # f"wearing fashionable, full-body outfits. Detailed face, proportional body, head included, realistic images, the background should be in accordance with the occasion"
         )
-        generated_images = generate_outfits(prompt, text_to_image_api_key)
+        generated_images = generate_outfits(prompt, st.secrets["API"]["api_key"])
+
         
         if generated_images:
             st.info("Applying FaceSwap to the generated outfits...")
-            faceswap_api_key = "SG_b10384629aa194e1"
             swapped_images = []
             
             for img_base64 in generated_images:
-                swapped_image = apply_faceswap(face_image_base64, img_base64, faceswap_api_key)
+                swapped_image = apply_faceswap(face_image_base64, img_base64)
                 if swapped_image:
                     swapped_images.append(swapped_image)
             
