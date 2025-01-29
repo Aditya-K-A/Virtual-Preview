@@ -596,14 +596,14 @@ if st.button("Generate Outfit Suggestions"):
             for a polished look. Lighting is natural and soft, enhancing the colors and textures of the clothing and accessories.'''
             # f"wearing fashionable, full-body outfits. Detailed face, proportional body, head included, realistic images, the background should be in accordance with the occasion"
         )
-        generated_images = generate_outfits(prompt, text_to_image_api_key)
+        generated_images = generate_outfits(prompt)
         
         if generated_images:
             st.info("Applying FaceSwap to the generated outfits...")
             swapped_images = []
             
             for img_base64 in generated_images:
-                swapped_image = apply_faceswap(face_image_base64, img_base64, faceswap_api_key)
+                swapped_image = apply_faceswap(face_image_base64, img_base64)
                 if swapped_image:
                     swapped_images.append(swapped_image)
             
