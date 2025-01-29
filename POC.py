@@ -604,7 +604,7 @@ if st.button("Generate Outfit Suggestions"):
             swapped_images = []
             
             for img_base64 in generated_images:
-                swapped_image = apply_faceswap(face_image_base64, img_base64)
+                swapped_image = apply_faceswap(face_image_base64, img_base64, st.secrets["API"]["api_key"])
                 if swapped_image:
                     swapped_images.append(swapped_image)
             
