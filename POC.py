@@ -143,7 +143,7 @@ if st.button("Generate Outfit Suggestions"):
             # Modified the prompt to ensure that the full head and face are clearly visible.
             prompts = [
                 (
-                    f"A full-body image of an {ethinicity.lower()} {gender.lower()} in their {age.lower()} dressed for a {occasion.lower()} for the {season.lower()} season, with a clearly visible head and face. "
+                    f"A full-body image of an {ethinicity.lower()} {gender.lower()} in their {age.lower()}, with a {body_type.lower()} {body_shape.lower()} shaped body, dressed for a {occasion.lower()} for the {season.lower()} season, with a clearly visible head and face. "
                     f"The outfit should be {selected_clothing_variations[i]} in accordance with {style.lower()} style in {selected_colors[i]} color with a {selected_patterns[i]} pattern. "
                     f"The background should be {selected_backgrounds[i]}. "
                     "Ensure no two images have the same color scheme, fabric, or clothing type. "
