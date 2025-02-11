@@ -281,11 +281,11 @@ st.markdown(
 st.markdown(
     """
     <div class="progress-labels">
-        <span>1. Intro</span>
-        <span>2. Body</span>
-        <span>3. Theme</span>
-        <span>4. Preview</span>
-        <span>5. Outfits</span>
+        <span style="color: white;">1. Intro</span>
+        <span style="color: white;">2. Body</span>
+        <span style="color: white;">3. Theme</span>
+        <span style="color: white;">4. Preview</span>
+        <span style="color: white;">5. Outfits</span>
     </div>
     """,
     unsafe_allow_html=True
