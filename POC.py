@@ -138,14 +138,17 @@
 import streamlit as st
 import requests
 import base64
+import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from PIL import Image
 from io import BytesIO
 import random
+from datetime import datetime
 import json
 
 # ----- Helper Functions -----
 def image_to_base64(image):
-    """Convert an uploaded image to Base64 after resizing it."""
+    """Resize the uploaded image and convert it to Base64."""
     try:
         img = Image.open(image)
         img = img.resize((512, 512))  # Resize for API compatibility
@@ -164,17 +167,16 @@ def decode_base64_to_image(b64_data):
         st.error(f"Error decoding Base64 image: {str(e)}")
         return None
 
-def generate_outfits(prompt):
+def generate_outfits(prompt, face_image_base64):
     """Call the Text-to-Image API (Stable Diffusion) to generate an outfit image."""
     url = "https://api.segmind.com/v1/stable-diffusion-3.5-large-txt2img"
     headers = {"x-api-key": st.secrets["API"]["api_key"]}
     data = {
         "prompt": prompt,
         "negative_prompt": (
-            "Blurry details, incomplete outfit, disproportionate body shape, overly bright or unnatural lighting, "
-            "unrealistic or overly exaggerated features, distracting backgrounds, mismatched accessories, poorly styled "
-            "or irrelevant attire, inconsistent textures, low-quality rendering and multiple images, same clothes in all "
-            "the images, (same colour), multiple body parts"
+            "Blurry details, incomplete outfit, disproportionate body shape, overly bright or unnatural lighting, unrealistic or overly exaggerated features, "
+            "distracting backgrounds, mismatched accessories, poorly styled or irrelevant attire, inconsistent textures, low-quality rendering and multiple images, "
+            "same clothes in all the images, (same colour), multiple body parts"
         ),
         "steps": 35,
         "guidance_scale": 7.5,
@@ -190,8 +192,11 @@ def generate_outfits(prompt):
     try:
         response = requests.post(url, json=data, headers=headers)
         response_json = response.json()
+        now = datetime.now()
+        print("now = generated", now)
         if response.status_code == 200 and "image" in response_json:
-            return response_json["image"]
+            return apply_faceswap(face_image_base64, response_json["image"])
+            # return response_json["image"]
         else:
             st.error(f"Failed to generate outfit suggestions. {response_json.get('error', 'Unknown error')}")
             return None
@@ -204,7 +209,6 @@ def apply_faceswap(source_img_base64, target_img_base64):
     if not target_img_base64 or len(target_img_base64) < 100:
         st.error("Invalid target image. Skipping FaceSwap.")
         return None
-
     url = "https://api.segmind.com/v1/faceswap-v3"
     data = {
         "source_img": source_img_base64,
@@ -226,16 +230,18 @@ def apply_faceswap(source_img_base64, target_img_base64):
     try:
         response = requests.post(url, json=data, headers=headers)
         response_json = response.json()
+        now = datetime.now()
+        print("now =", now)
         if response.status_code == 200 and "image" in response_json:
             return response_json["image"]
         else:
             st.error(f"Error applying FaceSwap: {response_json.get('error', 'Unknown error')}")
-            return None
+        return None
     except Exception as e:
         st.error(f"Unexpected error during FaceSwap: {str(e)}")
         return None
 
-# ----- Custom CSS for Background and Button Styling -----
+# ----- Custom CSS for Background, Header, Button, and Progress Bar Labels -----
 st.markdown(
     """
     <style>
@@ -254,23 +260,55 @@ st.markdown(
         background-color: #ff6f61;
         color: white;
         font-weight: bold;
+        margin-right: 0px;
+        margin-left: 0px;  /* Added left margin for better alignment with select boxes */ 
+    }
+    
+    .progress-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #333;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# ----- Multi-page Navigation Using Session State -----
+# Custom progress bar labels above the progress bar
+
+st.markdown(
+    """
+    <div class="progress-labels">
+        <span>1. Intro</span>
+        <span>2. Body</span>
+        <span>3. Theme</span>
+        <span>4. Preview</span>
+        <span>5. Outfits</span>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+# ----- Multi-page Navigation Setup -----
 if "page" not in st.session_state:
     st.session_state["page"] = "intro"
 if "progress" not in st.session_state:
     st.session_state["progress"] = 0
+if "generated_images" not in st.session_state:
+    st.session_state["generated_images"] = None
 
-def go_to_page(page_name, progress):
+def go_to_page(page_name, progress, reset_generated=False):
     st.session_state["page"] = page_name
     st.session_state["progress"] = progress
+    if reset_generated:
+        st.session_state["generated_images"] = None
+    # st.session_state["force_update"] = not st.session_state.get("force_update", False)
+    st.rerun()
 
-# Progress bar at the top
+
+# Display progress bar at the top
 st.progress(st.session_state["progress"])
 
 # ----- Page Definitions -----
@@ -278,58 +316,92 @@ st.progress(st.session_state["progress"])
 # Intro Page
 if st.session_state["page"] == "intro":
     st.title("Welcome to Personalized Outfit Suggester!")
-    st.write("This app helps you discover outfit suggestions tailored to your style and body type with a fun face-swap twist!")
-    if st.button("Start"):
-        go_to_page("body_details", 33)
+    st.write("Discover outfit suggestions tailored to your style and body type with a fun face-swap twist!")
+    if st.button("Start Now", key="start_intro"):
+        go_to_page("body_details", 20)
 
 # Page 1: Body Details
 elif st.session_state["page"] == "body_details":
     st.title("Step 1: Tell us about your body")
-    body_type = st.selectbox("Body Type", ["Slim", "Athletic", "Curvy", "Plus Size"])
-    body_shape = st.selectbox("Body Shape", ["Rectangle", "Hourglass", "Triangle", "Inverted Triangle", "Pear"])
-    gender = st.selectbox("Gender", ["Man", "Woman", "Non-Binary"])
-    color_complexion = st.selectbox("Color Complexion", ["Light", "Medium", "Dark", "warm wheatish"])
+    body_type = st.selectbox("Body Type", ["Slim", "Athletic", "Curvy", "Plus Size"], key="body_type_input",
+                              index=["Slim", "Athletic", "Curvy", "Plus Size"].index(st.session_state.get("body_type", "Slim")))
+    body_shape = st.selectbox("Body Shape", ["Rectangle", "Hourglass", "Triangle", "Inverted Triangle", "Pear"], key="body_shape_input",
+                               index=["Rectangle", "Hourglass", "Triangle", "Inverted Triangle", "Pear"].index(st.session_state.get("body_shape", "Rectangle")))
+    gender = st.selectbox("Gender", ["Man", "Woman", "Non-Binary"], key="gender_input",
+                          index=["Man", "Woman", "Non-Binary"].index(st.session_state.get("gender", "Man")))
+    age = st.selectbox("Age", ["15 - 24", "25 - 34", "35 - 44", "45 - 54", "55 - 64", "65 - 75"], key="age_input",
+                       index=["15 - 24", "25 - 34", "35 - 44", "45 - 54", "55 - 64", "65 - 75"].index(st.session_state.get("age", "15 - 24")))
+    color_complexion = st.selectbox("Color Complexion", ["Light", "Medium", "Dark", "warm wheatish"], key="complexion_input",
+                                    index=["Light", "Medium", "Dark", "warm wheatish"].index(st.session_state.get("color_complexion", "Light")))
     
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Back to Intro"):
+        if st.button("Back to Intro", key="back_intro"):
             go_to_page("intro", 0)
     with col2:
-        if st.button("Next"):
-            # Save body details into session state
+        if st.button("Next", key="next_body"):
             st.session_state["body_type"] = body_type
             st.session_state["body_shape"] = body_shape
             st.session_state["gender"] = gender
+            st.session_state["age"] = age
             st.session_state["color_complexion"] = color_complexion
-            go_to_page("preferences", 66)
+            go_to_page("preferences", 40)
 
 # Page 2: Fashion Preferences & Face Image Upload
 elif st.session_state["page"] == "preferences":
-    st.title("Step 2: Your Fashion Preferences")
-    occasion = st.selectbox("Occasion", ["Diwali party", "Wedding", "Christmas Dinner", "Casual day outing", "beach day"])
-    age = st.selectbox("Age", ["Teens", "Mid-twentys", "Mid-thirtys", "Mid-fortys", "Mid-fiftys"])
-    season = st.selectbox("Season", ["summers", "winters", "rainy", "autumn", "spring"])
-    style = st.selectbox("Style", ["casual", "formal", "bohemian", "vintage", "streetwear", "preppy", "minimalist", "chic", "artsy"])
-    ethinicity = st.selectbox("Ethinicity", ["Indian", "American", "French", "Spanish"])
+    st.title("Step 2: Your Theme Preferences")
+    occasion = st.selectbox("Occasion", ["Diwali party", "Wedding", "Christmas Dinner", "Casual day outing", "beach day"], key="occasion_input",
+                             index=["Diwali party", "Wedding", "Christmas Dinner", "Casual day outing", "beach day"].index(st.session_state.get("occasion", "Diwali party")))
+    season = st.selectbox("Season", ["summers", "winters", "rainy", "autumn", "spring"], key="season_input",
+                          index=["summers", "winters", "rainy", "autumn", "spring"].index(st.session_state.get("season", "summers")))
+    style = st.selectbox("Style", ["casual", "formal", "bohemian", "vintage", "streetwear", "preppy", "minimalist", "chic", "artsy"], key="style_input",
+                         index=["casual", "formal", "bohemian", "vintage", "streetwear", "preppy", "minimalist", "chic", "artsy"].index(st.session_state.get("style", "casual")))
+    ethinicity = st.selectbox("Ethinicity", ["Indian", "American", "French", "Spanish"], key="ethinicity_input",
+                              index=["Indian", "American", "French", "Spanish"].index(st.session_state.get("ethinicity", "Indian")))
     st.subheader("Upload Your Face Image")
-    uploaded_file = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
+    uploaded_file = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"], key="face_upload")
     
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Back"):
-            go_to_page("body_details", 33)
+        if st.button("Back", key="back_preferences"):
+            go_to_page("body_details", 20)
     with col2:
-        if st.button("Generate Outfit Suggestions"):
-            # Save fashion preferences into session state
+        if st.button("Next to Preview", key="next_preview"):
             st.session_state["occasion"] = occasion
-            st.session_state["age"] = age
             st.session_state["season"] = season
             st.session_state["style"] = style
             st.session_state["ethinicity"] = ethinicity
             st.session_state["uploaded_file"] = uploaded_file
+            go_to_page("preview", 60)
+
+# Page 3: Preview User Choices
+elif st.session_state["page"] == "preview":
+    st.title("Preview Your Choices")
+    st.write("Review your selections below before generating outfit suggestions:")
+    st.write("**Body Details:**")
+    st.write(f"Body Type: {st.session_state.get('body_type', 'Not set')}")
+    st.write(f"Body Shape: {st.session_state.get('body_shape', 'Not set')}")
+    st.write(f"Gender: {st.session_state.get('gender', 'Not set')}")
+    st.write(f"Age: {st.session_state.get('age', 'Not set')}")
+    st.write(f"Color Complexion: {st.session_state.get('color_complexion', 'Not set')}")
+    st.write("**Theme Preferences:**")
+    st.write(f"Occasion: {st.session_state.get('occasion', 'Not set')}")
+    st.write(f"Season: {st.session_state.get('season', 'Not set')}")
+    st.write(f"Style: {st.session_state.get('style', 'Not set')}")
+    st.write(f"Ethinicity: {st.session_state.get('ethinicity', 'Not set')}")
+    if st.session_state.get("uploaded_file") is not None:
+        st.image(decode_base64_to_image(image_to_base64(st.session_state.get("uploaded_file"))), width=200)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Back to Preferences", key="back_to_preferences"):
+            go_to_page("preferences", 40)
+    # Removed "Update Preview" button per your request
+    with col2:
+        if st.button("Confirm and Generate", key="confirm_generate"):
             go_to_page("results", 100)
 
-# Results Page
+# Page 4: Results Page
 elif st.session_state["page"] == "results":
     st.title("Your Personalized Outfit Suggestions")
     
@@ -337,15 +409,14 @@ elif st.session_state["page"] == "results":
     body_type = st.session_state.get("body_type")
     body_shape = st.session_state.get("body_shape")
     gender = st.session_state.get("gender")
+    age = st.session_state.get("age")
     color_complexion = st.session_state.get("color_complexion")
     occasion = st.session_state.get("occasion")
-    age = st.session_state.get("age")
     season = st.session_state.get("season")
     style = st.session_state.get("style")
     ethinicity = st.session_state.get("ethinicity")
     uploaded_file = st.session_state.get("uploaded_file")
     
-    # Check if face image is uploaded
     if not uploaded_file:
         st.error("No face image uploaded. Please go back and upload your face image.")
     else:
@@ -354,7 +425,7 @@ elif st.session_state["page"] == "results":
             st.error("Failed to process the face image.")
         else:
             st.info("Generating outfit suggestions...")
-            # For extra outfit variety, generate unique variations for clothing, colors, patterns, backgrounds:
+            # Generate unique variations for outfit details
             color_variations = [
                 "red", "blue", "green", "yellow", "orange", "purple", "pink", "brown",
                 "black", "cyan", "magenta", "lime", "teal", "maroon", "navy", "olive"
@@ -381,36 +452,47 @@ elif st.session_state["page"] == "results":
                 f"The attire should include appropriate footwear and accessories to complete the look. "
                 f"Do not include multiple people in a single image. There should only be one person in an image at a time. "
                 f"Lighting should be natural and soft, enhancing the colors and textures of the clothing and accessories."
+                f"The background shouldn't be blurry and faded."
                 for i in range(4)
             ]
-            
-            # Generate outfit images for each prompt separately
-            generated_images = []
-            for single_prompt in prompts:
-                img_base64 = generate_outfits(single_prompt)
-                if img_base64:
-                    generated_images.append(img_base64)
-            
-            if generated_images:
-                st.info("Applying FaceSwap to the generated outfits...")
-                swapped_images = []
-                for img_base64 in generated_images:
-                    swapped_image = apply_faceswap(face_image_base64, img_base64)
-                    if swapped_image:
-                        swapped_images.append(swapped_image)
-                
-                if swapped_images:
-                    st.subheader("Suggested Outfits:")
-                    cols = st.columns(2)
-                    for i, img_base64 in enumerate(swapped_images):
-                        with cols[i % 2]:
-                            image = decode_base64_to_image(img_base64)
+
+            generated_images = [None] * 4
+
+            # Create placeholders *outside* the loop:
+            image_placeholders = st.columns(2) * 2
+            text_placeholders = [st.empty() for _ in range(4)] # List comprehension to create st.empty elements
+
+            # Display initial placeholders and "LOADING..." text:
+            for i in range(4):
+                text_placeholders[i].markdown("<h3 style='text-align: center;'>LOADING...</h3>", unsafe_allow_html=True)
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futures = [executor.submit(generate_outfits, prompt, face_image_base64) for prompt in prompts]
+
+                for i, future in enumerate(concurrent.futures.as_completed(futures)): # Use as_completed to update as images finish
+                    try:
+                        image_data = future.result()
+                        if image_data:
+                            generated_images[i] = image_data
+                            image = decode_base64_to_image(image_data)
                             if image:
-                                st.image(image, use_container_width=True)
+                                text_placeholders[i].empty() # Clear the loading text for this image
+                                image_placeholders[i].image(image, use_container_width=True)  # Replace placeholder with image
+                        else:
+                            st.error(f"Image generation failed for suggestion {i+1}")
+                    except Exception as e:
+                        st.error(f"An error occurred: {e}")
+
+                if any(generated_images):
+                    st.subheader("Suggested Outfits:")
                 else:
-                    st.error("FaceSwap failed for all images.")
-            else:
-                st.error("Failed to generate outfit suggestions.")
+                    st.error("All outfit generation attempts failed.")
     
-    if st.button("Start Over"):
-        go_to_page("intro", 0)
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Edit Inputs", key="edit_inputs"):
+            go_to_page("preview", 80)
+    with col2:
+        if st.button("Start Over", key="start_over"):
+            st.session_state.clear()
+            go_to_page("intro", 0, reset_generated=True)
