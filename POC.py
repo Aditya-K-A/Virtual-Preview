@@ -145,6 +145,29 @@ from io import BytesIO
 import random
 from datetime import datetime
 import json
+st.markdown(
+    """
+    <style>
+        /* Target selectbox labels */
+        .stSelectbox label {
+            color: white !important; /* White label text */
+        }
+
+        /* Target the selectbox container to ensure white text even when expanded */
+        .stSelectbox div[data-testid="stSelectbox"] div {
+            color: white !important;
+        }
+        /* Target file uploader label */
+        .stFileUploader label {
+            color: white !important;
+        }
+
+        /* Your other CSS styles (title, background, etc.) */
+        /* ... */
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 # ----- Helper Functions -----
 def image_to_base64(image):
@@ -290,7 +313,6 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
 # ----- Multi-page Navigation Setup -----
 if "page" not in st.session_state:
     st.session_state["page"] = "intro"
@@ -315,14 +337,16 @@ st.progress(st.session_state["progress"])
 
 # Intro Page
 if st.session_state["page"] == "intro":
-    st.title("Welcome to Personalized Outfit Suggester!")
-    st.write("Discover outfit suggestions tailored to your style and body type with a fun face-swap twist!")
+    st.markdown("<h1 style='color: white; text-align: left;'>Welcome to Personalized Outfit Suggester!</h1>", unsafe_allow_html=True)  
+    st.markdown("<p style='color: white; text-align: left;'>Discover outfit suggestions tailored to your style and body type with a fun face-swap twist!</p>", unsafe_allow_html=True)  
+    # st.title("Welcome to Personalized Outfit Suggester!")
+    # st.write("Discover outfit suggestions tailored to your style and body type with a fun face-swap twist!")
     if st.button("Start Now", key="start_intro"):
         go_to_page("body_details", 20)
 
 # Page 1: Body Details
 elif st.session_state["page"] == "body_details":
-    st.title("Step 1: Tell us about your body")
+    st.markdown("<h2 style='color: white;'>Step 1: Tell us about your body</h2>", unsafe_allow_html=True)  # White title
     body_type = st.selectbox("Body Type", ["Slim", "Athletic", "Curvy", "Plus Size"], key="body_type_input",
                               index=["Slim", "Athletic", "Curvy", "Plus Size"].index(st.session_state.get("body_type", "Slim")))
     body_shape = st.selectbox("Body Shape", ["Rectangle", "Hourglass", "Triangle", "Inverted Triangle", "Pear"], key="body_shape_input",
@@ -349,7 +373,8 @@ elif st.session_state["page"] == "body_details":
 
 # Page 2: Fashion Preferences & Face Image Upload
 elif st.session_state["page"] == "preferences":
-    st.title("Step 2: Your Theme Preferences")
+    # st.title("Step 2: Your Theme Preferences")
+    st.markdown("<h2 style='color: white;'>Step 2: Your Theme Preferences</h2>", unsafe_allow_html=True)  # White title
     occasion = st.selectbox("Occasion", ["Diwali party", "Wedding", "Christmas Dinner", "Casual day outing", "beach day"], key="occasion_input",
                              index=["Diwali party", "Wedding", "Christmas Dinner", "Casual day outing", "beach day"].index(st.session_state.get("occasion", "Diwali party")))
     season = st.selectbox("Season", ["summers", "winters", "rainy", "autumn", "spring"], key="season_input",
@@ -358,9 +383,9 @@ elif st.session_state["page"] == "preferences":
                          index=["casual", "formal", "bohemian", "vintage", "streetwear", "preppy", "minimalist", "chic", "artsy"].index(st.session_state.get("style", "casual")))
     ethinicity = st.selectbox("Ethinicity", ["Indian", "American", "French", "Spanish"], key="ethinicity_input",
                               index=["Indian", "American", "French", "Spanish"].index(st.session_state.get("ethinicity", "Indian")))
-    st.subheader("Upload Your Face Image")
+    # st.subheader("Upload Your Face Image")
+    st.markdown("<h3 style='color: white;'>Upload Your Face Image</h3>", unsafe_allow_html=True)
     uploaded_file = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"], key="face_upload")
-    
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Back", key="back_preferences"):
@@ -376,19 +401,23 @@ elif st.session_state["page"] == "preferences":
 
 # Page 3: Preview User Choices
 elif st.session_state["page"] == "preview":
-    st.title("Preview Your Choices")
-    st.write("Review your selections below before generating outfit suggestions:")
-    st.write("**Body Details:**")
-    st.write(f"Body Type: {st.session_state.get('body_type', 'Not set')}")
-    st.write(f"Body Shape: {st.session_state.get('body_shape', 'Not set')}")
-    st.write(f"Gender: {st.session_state.get('gender', 'Not set')}")
-    st.write(f"Age: {st.session_state.get('age', 'Not set')}")
-    st.write(f"Color Complexion: {st.session_state.get('color_complexion', 'Not set')}")
-    st.write("**Theme Preferences:**")
-    st.write(f"Occasion: {st.session_state.get('occasion', 'Not set')}")
-    st.write(f"Season: {st.session_state.get('season', 'Not set')}")
-    st.write(f"Style: {st.session_state.get('style', 'Not set')}")
-    st.write(f"Ethinicity: {st.session_state.get('ethinicity', 'Not set')}")
+    st.markdown("<h2 style='color: white;'>Preview Your Choices</h2>", unsafe_allow_html=True)  # White title
+
+    st.markdown("<p style='color: white;'>Review your selections below before generating outfit suggestions:</p>", unsafe_allow_html=True)
+
+    st.markdown("<h3 style='color: white;'>Body Details:</h3>", unsafe_allow_html=True)  # White section header
+    st.markdown(f"<p style='color: white;'>Body Type: {st.session_state.get('body_type', 'Not set')}</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color: white;'>Body Shape: {st.session_state.get('body_shape', 'Not set')}</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color: white;'>Gender: {st.session_state.get('gender', 'Not set')}</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color: white;'>Age: {st.session_state.get('age', 'Not set')}</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color: white;'>Color Complexion: {st.session_state.get('color_complexion', 'Not set')}</p>", unsafe_allow_html=True)
+
+    st.markdown("<h3 style='color: white;'>Theme Preferences:</h3>", unsafe_allow_html=True)  # White section header
+    st.markdown(f"<p style='color: white;'>Occasion: {st.session_state.get('occasion', 'Not set')}</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color: white;'>Season: {st.session_state.get('season', 'Not set')}</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color: white;'>Style: {st.session_state.get('style', 'Not set')}</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color: white;'>Ethinicity: {st.session_state.get('ethinicity', 'Not set')}</p>", unsafe_allow_html=True)
+
     if st.session_state.get("uploaded_file") is not None:
         st.image(decode_base64_to_image(image_to_base64(st.session_state.get("uploaded_file"))), width=200)
     
@@ -396,14 +425,14 @@ elif st.session_state["page"] == "preview":
     with col1:
         if st.button("Back to Preferences", key="back_to_preferences"):
             go_to_page("preferences", 40)
-    # Removed "Update Preview" button per your request
     with col2:
         if st.button("Confirm and Generate", key="confirm_generate"):
             go_to_page("results", 100)
 
 # Page 4: Results Page
 elif st.session_state["page"] == "results":
-    st.title("Your Personalized Outfit Suggestions")
+    # st.title("Your Personalized Outfit Suggestions")
+    st.markdown("<h2 style='color: white;'>Your Personalized Outfit Suggestions</h2>", unsafe_allow_html=True)  # White title
     
     # Retrieve saved inputs
     body_type = st.session_state.get("body_type")
@@ -464,7 +493,7 @@ elif st.session_state["page"] == "results":
 
             # Display initial placeholders and "LOADING..." text:
             for i in range(4):
-                text_placeholders[i].markdown("<h3 style='text-align: center;'>LOADING...</h3>", unsafe_allow_html=True)
+                text_placeholders[i].markdown("<h3 style='text-align: center; color: white;'>LOADING...</h3>", unsafe_allow_html=True)
 
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 futures = [executor.submit(generate_outfits, prompt, face_image_base64) for prompt in prompts]
